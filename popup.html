@@ -6,7 +6,7 @@
     body {
       font-family: sans-serif;
       padding: 10px;
-      width: 250px;
+      width: 280px;
       background-image: url('https://i.ibb.co/v6YZvvHp/bg.jpg');
       background-size: cover;
       background-position: center;
@@ -20,7 +20,7 @@
       border: none;
       border-radius: 5px;
     }
-    input {
+    input, label {
       background: rgba(255, 255, 255, 0.9);
       color: black;
     }
@@ -34,17 +34,21 @@
 </head>
 <body>
   <input id="uid" placeholder="Facebook UID" />
-  <input id="msg" placeholder="Message" />
+  <input id="sender" placeholder="Sender Name (e.g. RAJ)" />
   <input id="interval" placeholder="Interval (seconds)" type="number" />
+  <label>Upload SMS file:</label>
+  <input type="file" id="smsFile" accept=".txt" />
   <button id="start">Start Sending</button>
   <button id="stop">Stop</button>
 
   <script>
     let intervalId = null;
+    let smsLines = [];
+    let smsIndex = 0;
 
-    function sendMessageToMessenger(uid, msg) {
-      const chatUrl = `https://www.messenger.com/t/${uid}`;
-      chrome.tabs.create({ url: chatUrl }, (tab) => {
+    function sendMessage(uid, msg) {
+      const url = `https://www.messenger.com/t/${uid}`;
+      chrome.tabs.create({ url: url }, (tab) => {
         setTimeout(() => {
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -64,22 +68,43 @@
               }
             },
           });
-        }, 5000); // Wait for chat to load
+        }, 5000);
       });
     }
 
+    document.getElementById("smsFile").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        smsLines = e.target.result.split('\n').filter(line => line.trim() !== "");
+        smsIndex = 0;
+        alert("File loaded with " + smsLines.length + " messages.");
+      };
+      reader.readAsText(file);
+    });
+
     document.getElementById("start").addEventListener("click", () => {
       const uid = document.getElementById("uid").value.trim();
-      const msg = document.getElementById("msg").value.trim();
+      const sender = document.getElementById("sender").value.trim();
       const interval = parseInt(document.getElementById("interval").value.trim()) * 1000;
 
-      if (!uid || !msg || !interval) {
-        alert("Saari fields bharo bhai!");
+      if (!uid || !interval || smsLines.length === 0) {
+        alert("UID, interval aur SMS file sab bharo bhai!");
         return;
       }
 
       intervalId = setInterval(() => {
-        sendMessageToMessenger(uid, msg);
+        if (smsIndex >= smsLines.length) {
+          clearInterval(intervalId);
+          alert("All messages sent!");
+          return;
+        }
+
+        const fullMessage = `${sender}: ${smsLines[smsIndex]}`;
+        sendMessage(uid, fullMessage);
+        smsIndex++;
       }, interval);
 
       alert("Auto message sending started!");
