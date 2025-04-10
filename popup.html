@@ -33,7 +33,6 @@
   </style>
 </head>
 <body>
-  <input id="uid" placeholder="Facebook UID" />
   <input id="sender" placeholder="Sender Name (e.g. RAJ)" />
   <input id="interval" placeholder="Interval (seconds)" type="number" />
   <label>Upload SMS file:</label>
@@ -46,29 +45,32 @@
     let smsLines = [];
     let smsIndex = 0;
 
-    function sendMessage(uid, msg) {
-      const url = `https://www.messenger.com/t/${uid}`;
-      chrome.tabs.create({ url: url }, (tab) => {
-        setTimeout(() => {
-          chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            args: [msg],
-            func: (text) => {
-              const input = document.querySelector('[contenteditable="true"]');
-              if (input) {
-                input.focus();
-                document.execCommand("insertText", false, text);
-                input.dispatchEvent(new InputEvent("input", { bubbles: true }));
-                input.dispatchEvent(new KeyboardEvent("keydown", {
-                  bubbles: true,
-                  cancelable: true,
-                  key: "Enter",
-                  code: "Enter"
-                }));
-              }
-            },
-          });
-        }, 5000);
+    function sendMessageToMessengerTab(msg) {
+      chrome.tabs.query({ url: "*://www.messenger.com/t/*" }, (tabs) => {
+        if (tabs.length === 0) {
+          alert("Messenger tab open karo pehle!");
+          return;
+        }
+
+        const tab = tabs[0];
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          args: [msg],
+          func: (text) => {
+            const input = document.querySelector('[contenteditable="true"]');
+            if (input) {
+              input.focus();
+              document.execCommand("insertText", false, text);
+              input.dispatchEvent(new InputEvent("input", { bubbles: true }));
+              input.dispatchEvent(new KeyboardEvent("keydown", {
+                bubbles: true,
+                cancelable: true,
+                key: "Enter",
+                code: "Enter"
+              }));
+            }
+          },
+        });
       });
     }
 
@@ -86,12 +88,11 @@
     });
 
     document.getElementById("start").addEventListener("click", () => {
-      const uid = document.getElementById("uid").value.trim();
       const sender = document.getElementById("sender").value.trim();
       const interval = parseInt(document.getElementById("interval").value.trim()) * 1000;
 
-      if (!uid || !interval || smsLines.length === 0) {
-        alert("UID, interval aur SMS file sab bharo bhai!");
+      if (!interval || smsLines.length === 0) {
+        alert("Interval aur SMS file bharo!");
         return;
       }
 
@@ -103,7 +104,7 @@
         }
 
         const fullMessage = `${sender}: ${smsLines[smsIndex]}`;
-        sendMessage(uid, fullMessage);
+        sendMessageToMessengerTab(fullMessage);
         smsIndex++;
       }, interval);
 
