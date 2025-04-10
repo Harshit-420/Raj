@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Facebook UID Messenger Sender",
+  "name": "FB SMS Auto Sender",
   "version": "1.0",
   "permissions": ["scripting", "tabs"],
   "action": {
